@@ -49,15 +49,20 @@ function Tree({ x, y }: { x: number; y: number }) {
 
 export default function GameWorld() {
   const [player, setPlayer] = useState({ x: 40, y: 40 });
+  const playerRef = useRef(player);
   const [wolf, setWolf] = useState({ x: 860, y: 520 });
   const [score, setScore] = useState(0);
   const [activeDoorId, setActiveDoorId] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [gameOverReason, setGameOverReason] = useState<"lake" | "wolf">("lake");
 
-  // Smooth wolf movement with a fixed timestep
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+
   const wolfVel = useRef({ vx: -1.6, vy: -1.2 });
-  const lastTick = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastTick = useRef<number>(0);
 
   const doors = useMemo<Door[]>(
     () => [
@@ -66,7 +71,6 @@ export default function GameWorld() {
       { id: 3, x: 460, y: 100, open: false, type: "math" },
       { id: 4, x: 640, y: 110, open: false, type: "language" },
       { id: 5, x: 820, y: 150, open: false, type: "math" },
-
       { id: 6, x: 140, y: 300, open: false, type: "language" },
       { id: 7, x: 330, y: 300, open: false, type: "math" },
       { id: 8, x: 520, y: 305, open: false, type: "language" },
@@ -80,7 +84,6 @@ export default function GameWorld() {
 
   useEffect(() => setDoorState(doors), [doors]);
 
-  // Movement (disabled while a modal is open or game over)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (activeDoorId !== null || gameOver) return;
@@ -108,7 +111,6 @@ export default function GameWorld() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [activeDoorId, gameOver]);
 
-  // Door collision (only when not in modal / game over)
   useEffect(() => {
     if (activeDoorId !== null || gameOver) return;
 
@@ -124,7 +126,6 @@ export default function GameWorld() {
     }
   }, [player, doorState, activeDoorId, gameOver]);
 
-  // Pond collision (lake death)
   useEffect(() => {
     if (gameOver) return;
 
@@ -141,75 +142,56 @@ export default function GameWorld() {
     }
   }, [player, gameOver]);
 
-  // Wolf movement: wanders but also "hunts" the player when close
   useEffect(() => {
     if (gameOver) return;
 
-    const step = (ts: number) => {
-      if (lastTick.current === null) lastTick.current = ts;
-      const dt = Math.min(40, ts - lastTick.current); // cap for tab switching
+    const loop = (ts: number) => {
+      const dt = Math.min(32, ts - lastTick.current);
       lastTick.current = ts;
 
       setWolf((w) => {
-        // chase factor: if within 260px, steer toward player
+        const px = playerRef.current.x + PLAYER_W / 2;
+        const py = playerRef.current.y + PLAYER_H / 2;
         const wx = w.x + WOLF_W / 2;
         const wy = w.y + WOLF_H / 2;
-        const px = player.x + PLAYER_W / 2;
-        const py = player.y + PLAYER_H / 2;
 
         const dx = px - wx;
         const dy = py - wy;
-        const dist = Math.hypot(dx, dy);
+        const dist = Math.hypot(dx, dy) || 1;
 
         let vx = wolfVel.current.vx;
         let vy = wolfVel.current.vy;
 
-        if (dist < 260 && dist > 0.001) {
-          const speed = 2.6; // hunt speed
+        if (dist < 260) {
+          const speed = 2.4;
           vx = (dx / dist) * speed;
           vy = (dy / dist) * speed;
-        } else {
-          // wander with small random steering
-          if (Math.random() < 0.03) {
-            vx += (Math.random() - 0.5) * 0.8;
-            vy += (Math.random() - 0.5) * 0.8;
-          }
-          const maxWander = 2.0;
-          const mag = Math.hypot(vx, vy) || 1;
-          vx = (vx / mag) * Math.min(maxWander, mag);
-          vy = (vy / mag) * Math.min(maxWander, mag);
         }
 
-        // save vel for next time
         wolfVel.current = { vx, vy };
 
         let nx = w.x + vx * (dt / 16);
         let ny = w.y + vy * (dt / 16);
 
-        // bounce off walls
-        if (nx <= 0 || nx >= WORLD_W - WOLF_W) {
-          wolfVel.current.vx *= -1;
-          nx = clamp(nx, 0, WORLD_W - WOLF_W);
-        }
-        if (ny <= 0 || ny >= WORLD_H - WOLF_H) {
-          wolfVel.current.vy *= -1;
-          ny = clamp(ny, 0, WORLD_H - WOLF_H);
-        }
+        if (nx <= 0 || nx >= WORLD_W - WOLF_W) wolfVel.current.vx *= -1;
+        if (ny <= 0 || ny >= WORLD_H - WOLF_H) wolfVel.current.vy *= -1;
 
-        return { x: nx, y: ny };
+        return {
+          x: clamp(nx, 0, WORLD_W - WOLF_W),
+          y: clamp(ny, 0, WORLD_H - WOLF_H),
+        };
       });
 
-      requestAnimationFrame(step);
+      rafRef.current = requestAnimationFrame(loop);
     };
 
-    const raf = requestAnimationFrame(step);
+    rafRef.current = requestAnimationFrame(loop);
     return () => {
-      cancelAnimationFrame(raf);
-      lastTick.current = null;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     };
-  }, [player.x, player.y, gameOver]);
+  }, [gameOver]);
 
-  // Wolf eats player (collision)
   useEffect(() => {
     if (gameOver) return;
 
@@ -241,8 +223,7 @@ export default function GameWorld() {
     setPlayer({ x: 40, y: 40 });
     setWolf({ x: 860, y: 520 });
     wolfVel.current = { vx: -1.6, vy: -1.2 };
-    lastTick.current = null;
-
+    lastTick.current = 0;
     setScore(0);
     setDoorState(doors.map((d) => ({ ...d, open: false })));
     setActiveDoorId(null);
@@ -253,18 +234,15 @@ export default function GameWorld() {
     <>
       <div className="score">Score: {score}</div>
 
-      <div className="game" role="application" aria-label="Petorka Math World">
-        {/* Paths */}
+      <div className="game">
         <div className="path" style={{ left: 60, top: 140, width: 860, height: 60 }} />
         <div className="path" style={{ left: 120, top: 260, width: 760, height: 60 }} />
         <div className="path" style={{ left: 220, top: 400, width: 560, height: 70 }} />
 
-        {/* Ponds (lakes) */}
         {PONDS.map((p) => (
           <div key={p.id} className="pond" style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
         ))}
 
-        {/* Trees */}
         <Tree x={60} y={70} />
         <Tree x={160} y={60} />
         <Tree x={860} y={70} />
@@ -273,24 +251,14 @@ export default function GameWorld() {
         <Tree x={320} y={540} />
         <Tree x={640} y={520} />
         <Tree x={700} y={540} />
-        <Tree x={420} y={30} />
-        <Tree x={520} y={30} />
 
-        {/* Doors */}
         {doorState.map((d) => (
-          <div
-            key={d.id}
-            className={`door ${d.open ? "open" : ""}`}
-            style={{ left: d.x, top: d.y }}
-            title={`Door ${d.id} (${d.type})`}
-          />
+          <div key={d.id} className={`door ${d.open ? "open" : ""}`} style={{ left: d.x, top: d.y }} />
         ))}
 
-        {/* Wolf */}
-        <div className="wolf" style={{ left: wolf.x, top: wolf.y }} title="Wolf" />
+        <div className="wolf" style={{ left: wolf.x, top: wolf.y }} />
 
-        {/* Player (Minecraft-like) */}
-        <div className="player" style={{ left: player.x, top: player.y }} title="Player">
+        <div className="player" style={{ left: player.x, top: player.y }}>
           <div className="head" />
           <div className="hair" />
           <div className="eyes">
@@ -309,13 +277,8 @@ export default function GameWorld() {
         <div className="modalBackdrop">
           <div className="modal">
             <h2>Game Over</h2>
-            {gameOverReason === "lake" ? (
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Upao si u jezero! 🌊</div>
-            ) : (
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Vuk te pojeo! 🐺</div>
-            )}
-            <div style={{ opacity: 0.8, marginBottom: 14 }}>Klikni restart i probaj opet.</div>
-            <div className="row">
+            {gameOverReason === "wolf" ? "Vuk te pojeo! 🐺" : "Upao si u jezero! 🌊"}
+            <div className="row" style={{ marginTop: 12 }}>
               <button className="btn" onClick={restart}>
                 Restart
               </button>
