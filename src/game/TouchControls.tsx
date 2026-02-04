@@ -3,42 +3,32 @@ import { useEffect, useRef } from "react";
 type Dir = "up" | "down" | "left" | "right";
 
 export default function TouchControls({
-  onMoveDelta,
+  onMove,
   disabled,
 }: {
-  onMoveDelta: (dx: number, dy: number) => void;
+  onMove: (dir: Dir) => void;
   disabled: boolean;
 }) {
   const activeDir = useRef<Dir | null>(null);
   const raf = useRef<number | null>(null);
   const last = useRef<number | null>(null);
 
-  // pixels per second (tuned for kids on phones)
-  const SPEED = 220;
-
   useEffect(() => {
     if (disabled) {
       activeDir.current = null;
-      stopLoop();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled]);
 
   const tick = (ts: number) => {
     if (last.current === null) last.current = ts;
-    const dtMs = Math.min(34, ts - last.current); // cap ~30fps jump
+    const dt = Math.min(40, ts - last.current);
     last.current = ts;
 
     if (!disabled && activeDir.current) {
-      const dist = (SPEED * dtMs) / 1000;
-      let dx = 0,
-        dy = 0;
-      if (activeDir.current === "up") dy = -dist;
-      if (activeDir.current === "down") dy = dist;
-      if (activeDir.current === "left") dx = -dist;
-      if (activeDir.current === "right") dx = dist;
-
-      onMoveDelta(dx, dy);
+      // Move at ~60fps, scale so holding feels consistent
+      // (we call onMove multiple times per second)
+      const repeats = Math.max(1, Math.round(dt / 16));
+      for (let i = 0; i < repeats; i++) onMove(activeDir.current);
     }
     raf.current = requestAnimationFrame(tick);
   };
@@ -65,7 +55,7 @@ export default function TouchControls({
     stopLoop();
   };
 
-  // safety: stop if user lifts finger outside button
+  // One-time safety: stop loop if user lifts finger outside button
   useEffect(() => {
     const onUp = () => release();
     window.addEventListener("touchend", onUp);
@@ -76,7 +66,6 @@ export default function TouchControls({
       window.removeEventListener("touchcancel", onUp);
       window.removeEventListener("mouseup", onUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -366,27 +366,3 @@ html, body {
     display: none;
   }
 }
-
-
-/* --- Mobile layout fixes --- */
-@media (max-width: 900px) {
-  .score {
-    top: 8px;
-  }
-
-  .game {
-    width: calc(100vw - 16px);
-    height: calc(100vh - 210px); /* score + touch controls + safe space */
-    margin: 52px auto 0;
-  }
-
-  .touchControls {
-    bottom: 10px;
-  }
-
-  .pad {
-    width: 80px;
-    height: 80px;
-    font-size: 30px;
-  }
-}
