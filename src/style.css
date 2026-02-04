@@ -12,52 +12,216 @@ body {
   background: white;
   padding: 8px 16px;
   border-radius: 12px;
-  font-weight: 700;
-  z-index: 10;
+  font-weight: 800;
+  z-index: 50;
   box-shadow: 0 6px 18px rgba(0,0,0,0.12);
 }
 
+/* --- World --- */
 .game {
-  width: min(900px, 100vw);
-  height: min(600px, 100vh);
+  width: min(980px, calc(100vw - 24px));
+  height: min(640px, calc(100vh - 84px));
   margin: 60px auto 0;
-  background: #b7e4c7;
   border-radius: 18px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.16);
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25), transparent 35%),
+    radial-gradient(circle at 70% 40%, rgba(255,255,255,0.18), transparent 40%),
+    linear-gradient(#a7e6a0, #8fdb8e);
 }
 
+/* soft vignette */
+.game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 55%, rgba(0,0,0,0.12) 100%);
+}
+
+/* --- Background decor --- */
+.path {
+  position: absolute;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(0,0,0,0.04), rgba(255,255,255,0.14)),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 8px, rgba(255,255,255,0.0) 8px 16px);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);
+}
+
+.pond {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #7dd3fc, #0284c7);
+  box-shadow:
+    inset 0 0 0 3px rgba(255,255,255,0.25),
+    0 12px 28px rgba(0,0,0,0.14);
+  opacity: 0.95;
+}
+
+.tree {
+  position: absolute;
+  width: 46px;
+  height: 58px;
+  pointer-events: none;
+}
+.tree .crown {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 42px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 30% 30%, #86efac, #16a34a);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);
+}
+.tree .trunk {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(#a16207, #7c2d12);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.12);
+}
+
+/* --- Door --- */
 .door {
+  position: absolute;
+  width: 28px;
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(#7c3f1e, #5b2b12);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,0.14),
+    0 10px 18px rgba(0,0,0,0.18);
+}
+.door::before {
+  /* plank lines */
+  content: "";
+  position: absolute;
+  inset: 6px 6px 8px 6px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255,255,255,0.08) 0 3px,
+    rgba(0,0,0,0.06) 3px 6px
+  );
+  opacity: 0.65;
+}
+.door::after {
+  /* knob */
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #fde68a, #b45309);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12);
+}
+.door.open {
+  opacity: 0.55;
+  filter: saturate(0.8);
+}
+
+/* --- Minecraft-like Steve (pixel-ish) --- */
+.player {
   position: absolute;
   width: 26px;
   height: 38px;
-  border-radius: 6px;
-  background: #6c584c;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.2);
+  transform: translateZ(0);
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,0.22));
 }
 
-.door.open {
-  background: #95d5b2;
-  opacity: 0.8;
-}
-
-.player {
+.player .head {
   position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
   width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: #2563eb;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(#f2c7a4, #d7a07a);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
 }
 
+.player .hair {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 6px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(#3b2f2a, #2a1f1b);
+  opacity: 0.95;
+}
+
+.player .eyes {
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 4px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.player .eye {
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: #111827;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+
+.player .body {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 16px;
+  border-radius: 5px;
+  background: linear-gradient(#60a5fa, #2563eb);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.12);
+}
+
+.player .legs {
+  position: absolute;
+  left: 50%;
+  top: 34px;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 4px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.player .leg {
+  width: 8px;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(#1f2937, #111827);
+}
+
+/* --- Modal --- */
 .modalBackdrop {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.45);
   display: grid;
   place-items: center;
-  z-index: 20;
+  z-index: 60;
 }
 
 .modal {
@@ -95,7 +259,7 @@ body {
   border: 0;
   background: #111827;
   color: white;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -106,5 +270,5 @@ body {
 
 .feedback {
   margin-top: 10px;
-  font-weight: 700;
+  font-weight: 800;
 }
