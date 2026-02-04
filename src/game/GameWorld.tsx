@@ -59,10 +59,11 @@ export default function GameWorld() {
     []
   );
 
-  const [doorState, setDoorState] = useState(() => doors);
+  const [doorState, setDoorState] = useState<Door[]>(doors);
 
   useEffect(() => setDoorState(doors), [doors]);
 
+  // Movement (disabled while a modal is open or game over)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (activeDoorId !== null || gameOver) return;
@@ -88,22 +89,25 @@ export default function GameWorld() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [activeDoorId]);
+  }, [activeDoorId, gameOver]);
 
+  // Door collision (only when not in modal / game over)
   useEffect(() => {
     if (activeDoorId !== null || gameOver) return;
 
     for (const d of doorState) {
       if (d.open) continue;
 
-      const dx = Math.abs(player.x + 13 - (d.x + 14));
-      const dy = Math.abs(player.y + 19 - (d.y + 21));
+      const dx = Math.abs(player.x + PLAYER_W / 2 - (d.x + 14));
+      const dy = Math.abs(player.y + PLAYER_H / 2 - (d.y + 21));
       if (dx < 26 && dy < 30) {
         setActiveDoorId(d.id);
         break;
       }
     }
-  // pond (lake) collision: if player falls into water -> game over
+  }, [player, doorState, activeDoorId, gameOver]);
+
+  // Pond collision (lake death)
   useEffect(() => {
     if (gameOver) return;
 
@@ -119,19 +123,13 @@ export default function GameWorld() {
     }
   }, [player, gameOver]);
 
-  }, [player, doorState, activeDoorId, gameOver]);
-
   const activeDoor =
-    activeDoorId === null
-      ? null
-      : doorState.find((d) => d.id === activeDoorId) ?? null;
+    activeDoorId === null ? null : doorState.find((d) => d.id === activeDoorId) ?? null;
 
   const onCorrect = () => {
     setScore((s) => s + 10);
     if (activeDoor) {
-      setDoorState((ds) =>
-        ds.map((d) => (d.id === activeDoor.id ? { ...d, open: true } : d))
-      );
+      setDoorState((ds) => ds.map((d) => (d.id === activeDoor.id ? { ...d, open: true } : d)));
     }
     setActiveDoorId(null);
   };
@@ -142,7 +140,7 @@ export default function GameWorld() {
   const restart = () => {
     setPlayer({ x: 40, y: 40 });
     setScore(0);
-    setDoorState(doors.map(d => ({ ...d, open: false })));
+    setDoorState(doors.map((d) => ({ ...d, open: false })));
     setActiveDoorId(null);
     setGameOver(false);
   };
@@ -207,12 +205,13 @@ export default function GameWorld() {
             <div style={{ fontWeight: 800, marginBottom: 10 }}>Upao si u jezero! 🌊</div>
             <div style={{ opacity: 0.8, marginBottom: 14 }}>Klikni restart i probaj opet.</div>
             <div className="row">
-              <button className="btn" onClick={restart}>Restart</button>
+              <button className="btn" onClick={restart}>
+                Restart
+              </button>
             </div>
           </div>
         </div>
       )}
-
 
       {activeDoor && !activeDoor.open && activeDoor.type === "math" && (
         <MathChallenge onCorrect={onCorrect} onWrong={onWrong} onClose={closeModal} />
