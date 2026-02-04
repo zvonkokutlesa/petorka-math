@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MathChallenge from "./MathChallenge";
 import LanguageChallenge from "./LanguageChallenge";
 
@@ -18,6 +18,9 @@ const WORLD_H = 640;
 const PLAYER_W = 26;
 const PLAYER_H = 38;
 
+const WOLF_W = 34;
+const WOLF_H = 22;
+
 const PONDS = [
   { id: 1, x: 70, y: 420, w: 140, h: 90 },
   { id: 2, x: 780, y: 420, w: 160, h: 110 },
@@ -25,6 +28,14 @@ const PONDS = [
 
 function isPointInRect(px: number, py: number, r: { x: number; y: number; w: number; h: number }) {
   return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+}
+
+function rectsOverlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
 }
 
 function Tree({ x, y }: { x: number; y: number }) {
@@ -38,9 +49,15 @@ function Tree({ x, y }: { x: number; y: number }) {
 
 export default function GameWorld() {
   const [player, setPlayer] = useState({ x: 40, y: 40 });
+  const [wolf, setWolf] = useState({ x: 860, y: 520 });
   const [score, setScore] = useState(0);
   const [activeDoorId, setActiveDoorId] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
+  const [gameOverReason, setGameOverReason] = useState<"lake" | "wolf">("lake");
+
+  // Smooth wolf movement with a fixed timestep
+  const wolfVel = useRef({ vx: -1.6, vy: -1.2 });
+  const lastTick = useRef<number | null>(null);
 
   const doors = useMemo<Door[]>(
     () => [
@@ -80,8 +97,8 @@ export default function GameWorld() {
         if (key === "arrowleft" || key === "a") nx -= step;
         if (key === "arrowright" || key === "d") nx += step;
 
-        nx = Math.max(0, Math.min(WORLD_W - PLAYER_W, nx));
-        ny = Math.max(0, Math.min(WORLD_H - PLAYER_H, ny));
+        nx = clamp(nx, 0, WORLD_W - PLAYER_W);
+        ny = clamp(ny, 0, WORLD_H - PLAYER_H);
 
         return { x: nx, y: ny };
       });
@@ -116,12 +133,95 @@ export default function GameWorld() {
 
     for (const p of PONDS) {
       if (isPointInRect(cx, cy, p)) {
+        setGameOverReason("lake");
         setGameOver(true);
         setActiveDoorId(null);
         break;
       }
     }
   }, [player, gameOver]);
+
+  // Wolf movement: wanders but also "hunts" the player when close
+  useEffect(() => {
+    if (gameOver) return;
+
+    const step = (ts: number) => {
+      if (lastTick.current === null) lastTick.current = ts;
+      const dt = Math.min(40, ts - lastTick.current); // cap for tab switching
+      lastTick.current = ts;
+
+      setWolf((w) => {
+        // chase factor: if within 260px, steer toward player
+        const wx = w.x + WOLF_W / 2;
+        const wy = w.y + WOLF_H / 2;
+        const px = player.x + PLAYER_W / 2;
+        const py = player.y + PLAYER_H / 2;
+
+        const dx = px - wx;
+        const dy = py - wy;
+        const dist = Math.hypot(dx, dy);
+
+        let vx = wolfVel.current.vx;
+        let vy = wolfVel.current.vy;
+
+        if (dist < 260 && dist > 0.001) {
+          const speed = 2.6; // hunt speed
+          vx = (dx / dist) * speed;
+          vy = (dy / dist) * speed;
+        } else {
+          // wander with small random steering
+          if (Math.random() < 0.03) {
+            vx += (Math.random() - 0.5) * 0.8;
+            vy += (Math.random() - 0.5) * 0.8;
+          }
+          const maxWander = 2.0;
+          const mag = Math.hypot(vx, vy) || 1;
+          vx = (vx / mag) * Math.min(maxWander, mag);
+          vy = (vy / mag) * Math.min(maxWander, mag);
+        }
+
+        // save vel for next time
+        wolfVel.current = { vx, vy };
+
+        let nx = w.x + vx * (dt / 16);
+        let ny = w.y + vy * (dt / 16);
+
+        // bounce off walls
+        if (nx <= 0 || nx >= WORLD_W - WOLF_W) {
+          wolfVel.current.vx *= -1;
+          nx = clamp(nx, 0, WORLD_W - WOLF_W);
+        }
+        if (ny <= 0 || ny >= WORLD_H - WOLF_H) {
+          wolfVel.current.vy *= -1;
+          ny = clamp(ny, 0, WORLD_H - WOLF_H);
+        }
+
+        return { x: nx, y: ny };
+      });
+
+      requestAnimationFrame(step);
+    };
+
+    const raf = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(raf);
+      lastTick.current = null;
+    };
+  }, [player.x, player.y, gameOver]);
+
+  // Wolf eats player (collision)
+  useEffect(() => {
+    if (gameOver) return;
+
+    const playerRect = { x: player.x, y: player.y, w: PLAYER_W, h: PLAYER_H };
+    const wolfRect = { x: wolf.x, y: wolf.y, w: WOLF_W, h: WOLF_H };
+
+    if (rectsOverlap(playerRect, wolfRect)) {
+      setGameOverReason("wolf");
+      setGameOver(true);
+      setActiveDoorId(null);
+    }
+  }, [player, wolf, gameOver]);
 
   const activeDoor =
     activeDoorId === null ? null : doorState.find((d) => d.id === activeDoorId) ?? null;
@@ -139,6 +239,10 @@ export default function GameWorld() {
 
   const restart = () => {
     setPlayer({ x: 40, y: 40 });
+    setWolf({ x: 860, y: 520 });
+    wolfVel.current = { vx: -1.6, vy: -1.2 };
+    lastTick.current = null;
+
     setScore(0);
     setDoorState(doors.map((d) => ({ ...d, open: false })));
     setActiveDoorId(null);
@@ -182,6 +286,9 @@ export default function GameWorld() {
           />
         ))}
 
+        {/* Wolf */}
+        <div className="wolf" style={{ left: wolf.x, top: wolf.y }} title="Wolf" />
+
         {/* Player (Minecraft-like) */}
         <div className="player" style={{ left: player.x, top: player.y }} title="Player">
           <div className="head" />
@@ -202,7 +309,11 @@ export default function GameWorld() {
         <div className="modalBackdrop">
           <div className="modal">
             <h2>Game Over</h2>
-            <div style={{ fontWeight: 800, marginBottom: 10 }}>Upao si u jezero! 🌊</div>
+            {gameOverReason === "lake" ? (
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Upao si u jezero! 🌊</div>
+            ) : (
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Vuk te pojeo! 🐺</div>
+            )}
             <div style={{ opacity: 0.8, marginBottom: 14 }}>Klikni restart i probaj opet.</div>
             <div className="row">
               <button className="btn" onClick={restart}>
