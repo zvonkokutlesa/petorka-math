@@ -12,5 +12,99 @@ body {
   background: white;
   padding: 8px 16px;
   border-radius: 12px;
-  font-weight: bold;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+.game {
+  width: min(900px, 100vw);
+  height: min(600px, 100vh);
+  margin: 60px auto 0;
+  background: #b7e4c7;
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+}
+
+.door {
+  position: absolute;
+  width: 26px;
+  height: 38px;
+  border-radius: 6px;
+  background: #6c584c;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.2);
+}
+
+.door.open {
+  background: #95d5b2;
+  opacity: 0.8;
+}
+
+.player {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+
+.modal {
+  width: min(520px, calc(100vw - 32px));
+  background: white;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+}
+
+.modal h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.input {
+  flex: 1;
+  min-width: 160px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 16px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 0;
+  background: #111827;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.feedback {
+  margin-top: 10px;
+  font-weight: 700;
 }

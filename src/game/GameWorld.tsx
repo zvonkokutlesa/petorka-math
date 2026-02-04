@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import MathChallenge from "./MathChallenge";
 import LanguageChallenge from "./LanguageChallenge";
 
@@ -12,90 +12,120 @@ interface Door {
   type: DoorType;
 }
 
-export default function GameWorld() {
-  const [player, setPlayer] = useState({ x: 50, y: 50 });
-  const [score, setScore] = useState(0);
-  const [activeDoor, setActiveDoor] = useState<Door | null>(null);
+const WORLD_W = 900;
+const WORLD_H = 600;
 
-  const [doors, setDoors] = useState<Door[]>([
-    { id: 1, x: 100, y: 80, open: false, type: "math" },
-    { id: 2, x: 250, y: 80, open: false, type: "language" },
-    { id: 3, x: 400, y: 80, open: false, type: "math" },
-    { id: 4, x: 100, y: 200, open: false, type: "language" },
-    { id: 5, x: 250, y: 200, open: false, type: "math" },
-    { id: 6, x: 400, y: 200, open: false, type: "language" },
-    { id: 7, x: 150, y: 320, open: false, type: "math" },
-    { id: 8, x: 300, y: 320, open: false, type: "language" },
-    { id: 9, x: 450, y: 320, open: false, type: "math" },
-    { id: 10, x: 550, y: 180, open: false, type: "language" },
-  ]);
+export default function GameWorld() {
+  const [player, setPlayer] = useState({ x: 40, y: 40 });
+  const [score, setScore] = useState(0);
+  const [activeDoorId, setActiveDoorId] = useState<number | null>(null);
+
+  const doors = useMemo<Door[]>(() => {
+    // Exactly 10 doors: 5 math, 5 language
+    return [
+      { id: 1, x: 100, y: 80, open: false, type: "math" },
+      { id: 2, x: 250, y: 80, open: false, type: "language" },
+      { id: 3, x: 400, y: 80, open: false, type: "math" },
+      { id: 4, x: 560, y: 80, open: false, type: "language" },
+      { id: 5, x: 700, y: 120, open: false, type: "math" },
+
+      { id: 6, x: 120, y: 260, open: false, type: "language" },
+      { id: 7, x: 300, y: 260, open: false, type: "math" },
+      { id: 8, x: 480, y: 260, open: false, type: "language" },
+      { id: 9, x: 660, y: 300, open: false, type: "math" },
+      { id: 10, x: 420, y: 420, open: false, type: "language" },
+    ];
+  }, []);
+
+  const [doorState, setDoorState] = useState(() => doors);
+
+  useEffect(() => {
+    setDoorState(doors);
+  }, [doors]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      if (activeDoorId !== null) return; // freeze movement while modal open
+
+      const key = e.key.toLowerCase();
+      const step = 14;
+
       setPlayer((p) => {
-        const step = 10;
-        if (e.key === "ArrowUp") return { ...p, y: p.y - step };
-        if (e.key === "ArrowDown") return { ...p, y: p.y + step };
-        if (e.key === "ArrowLeft") return { ...p, x: p.x - step };
-        if (e.key === "ArrowRight") return { ...p, x: p.x + step };
-        return p;
+        let nx = p.x;
+        let ny = p.y;
+
+        if (key === "arrowup" || key === "w") ny -= step;
+        if (key === "arrowdown" || key === "s") ny += step;
+        if (key === "arrowleft" || key === "a") nx -= step;
+        if (key === "arrowright" || key === "d") nx += step;
+
+        // clamp to world bounds
+        nx = Math.max(0, Math.min(WORLD_W - 22, nx));
+        ny = Math.max(0, Math.min(WORLD_H - 22, ny));
+
+        return { x: nx, y: ny };
       });
     };
+
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [activeDoorId]);
 
+  // collision detection
   useEffect(() => {
-    doors.forEach((door) => {
-      if (
-        !door.open &&
-        Math.abs(player.x - door.x) < 20 &&
-        Math.abs(player.y - door.y) < 20
-      ) {
-        setActiveDoor(door);
-      }
-    });
-  }, [player, doors]);
+    if (activeDoorId !== null) return;
 
-  const handleCorrect = () => {
+    for (const d of doorState) {
+      if (d.open) continue;
+
+      const dx = Math.abs(player.x + 11 - (d.x + 13));
+      const dy = Math.abs(player.y + 11 - (d.y + 19));
+      if (dx < 24 && dy < 28) {
+        setActiveDoorId(d.id);
+        break;
+      }
+    }
+  }, [player, doorState, activeDoorId]);
+
+  const activeDoor = activeDoorId === null ? null : doorState.find((d) => d.id === activeDoorId) ?? null;
+
+  const onCorrect = () => {
     setScore((s) => s + 10);
     if (activeDoor) {
-      setDoors((ds) =>
-        ds.map((d) => (d.id === activeDoor.id ? { ...d, open: true } : d))
-      );
+      setDoorState((ds) => ds.map((d) => (d.id === activeDoor.id ? { ...d, open: true } : d)));
     }
-    setActiveDoor(null);
+    setActiveDoorId(null);
   };
 
-  const handleWrong = () => {
+  const onWrong = () => {
     setScore((s) => s - 1);
   };
+
+  const closeModal = () => setActiveDoorId(null);
 
   return (
     <>
       <div className="score">Score: {score}</div>
 
-      <svg width="100%" height="100vh">
-        <rect width="100%" height="100%" fill="#b7e4c7" />
-        {doors.map((d) => (
-          <rect
+      <div className="game" role="application" aria-label="Petorka Math Game World">
+        {doorState.map((d) => (
+          <div
             key={d.id}
-            x={d.x}
-            y={d.y}
-            width="20"
-            height="30"
-            fill={d.open ? "#95d5b2" : "#6c584c"}
+            className={`door ${d.open ? "open" : ""}`}
+            style={{ left: d.x, top: d.y }}
+            title={`Door ${d.id} (${d.type})`}
           />
         ))}
-        <circle cx={player.x} cy={player.y} r="10" fill="blue" />
-      </svg>
+
+        <div className="player" style={{ left: player.x, top: player.y }} title="Player" />
+      </div>
 
       {activeDoor && !activeDoor.open && activeDoor.type === "math" && (
-        <MathChallenge onCorrect={handleCorrect} onWrong={handleWrong} />
+        <MathChallenge onCorrect={onCorrect} onWrong={onWrong} onClose={closeModal} />
       )}
 
       {activeDoor && !activeDoor.open && activeDoor.type === "language" && (
-        <LanguageChallenge onCorrect={handleCorrect} onWrong={handleWrong} />
+        <LanguageChallenge onCorrect={onCorrect} onWrong={onWrong} onClose={closeModal} />
       )}
     </>
   );
