@@ -278,7 +278,7 @@ export default function GameWorld() {
         </div>
       </div>
 
-      <TouchControls onMove={moveDir} disabled={gameOver || activeDoorId !== null} />
+      <TouchControls onMoveDelta={move} disabled={gameOver || activeDoorId !== null} />
 
 {gameOver && (
         <div className="modalBackdrop">
