@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MathChallenge from "./MathChallenge";
 import LanguageChallenge from "./LanguageChallenge";
+import TouchControls from "./TouchControls";
 
 type DoorType = "math" | "language";
 
@@ -84,6 +85,23 @@ export default function GameWorld() {
 
   useEffect(() => setDoorState(doors), [doors]);
 
+
+  const move = (dx: number, dy: number) => {
+    setPlayer((p) => {
+      const nx = clamp(p.x + dx, 0, WORLD_W - PLAYER_W);
+      const ny = clamp(p.y + dy, 0, WORLD_H - PLAYER_H);
+      return { x: nx, y: ny };
+    });
+  };
+
+  const moveDir = (dir: "up" | "down" | "left" | "right") => {
+    const step = 14;
+    if (dir === "up") move(0, -step);
+    if (dir === "down") move(0, step);
+    if (dir === "left") move(-step, 0);
+    if (dir === "right") move(step, 0);
+  };
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (activeDoorId !== null || gameOver) return;
@@ -91,21 +109,8 @@ export default function GameWorld() {
       const key = e.key.toLowerCase();
       const step = 14;
 
-      setPlayer((p) => {
-        let nx = p.x;
-        let ny = p.y;
-
-        if (key === "arrowup" || key === "w") ny -= step;
-        if (key === "arrowdown" || key === "s") ny += step;
-        if (key === "arrowleft" || key === "a") nx -= step;
-        if (key === "arrowright" || key === "d") nx += step;
-
-        nx = clamp(nx, 0, WORLD_W - PLAYER_W);
-        ny = clamp(ny, 0, WORLD_H - PLAYER_H);
-
-        return { x: nx, y: ny };
-      });
-    };
+      moveDir((key === "arrowup" || key === "w") ? "up" : (key === "arrowdown" || key === "s") ? "down" : (key === "arrowleft" || key === "a") ? "left" : "right");
+};
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -273,7 +278,9 @@ export default function GameWorld() {
         </div>
       </div>
 
-      {gameOver && (
+      <TouchControls onMove={moveDir} disabled={gameOver || activeDoorId !== null} />
+
+{gameOver && (
         <div className="modalBackdrop">
           <div className="modal">
             <h2>Game Over</h2>

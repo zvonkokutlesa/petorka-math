@@ -303,3 +303,66 @@ body {
   border-radius: 50%;
   background: #111827;
 }
+
+
+/* --- Mobile friendliness --- */
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+.game {
+  touch-action: none; /* prevent scroll on game area */
+  user-select: none;
+}
+
+.touchControls {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 24px));
+  z-index: 55;
+  pointer-events: auto;
+}
+
+.touchControls.disabled {
+  opacity: 0.6;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 10px;
+  justify-items: center;
+  align-items: center;
+}
+
+.pad {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  border: 0;
+  font-size: 28px;
+  font-weight: 900;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.2);
+  touch-action: none;
+}
+
+.pad:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.pad.up { grid-column: 2; grid-row: 1; }
+.pad.left { grid-column: 1; grid-row: 2; }
+.pad.down { grid-column: 2; grid-row: 2; }
+.pad.right { grid-column: 3; grid-row: 2; }
+
+/* Hide touch controls on larger screens (keyboard users) */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .touchControls {
+    display: none;
+  }
+}
