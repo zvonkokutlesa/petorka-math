@@ -580,13 +580,15 @@ export default function App() {
         </div>
       </div>
 
-      <DPad
-        onDirDown={(dir) => {
-          if (gameOver || task) return;
-          setMoveDir(dir);
-        }}
-        onDirUp={() => setMoveDir(null)}
-      />
+      <div className="controlsOverlay">
+        <DPad
+          onDirDown={(dir) => {
+            if (gameOver || task) return;
+            setMoveDir(dir);
+          }}
+          onDirUp={() => setMoveDir(null)}
+        />
+      </div>
 
       {taskModal}
       {gameOverModal}
