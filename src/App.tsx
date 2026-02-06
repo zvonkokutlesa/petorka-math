@@ -105,10 +105,71 @@ const LANG_PAIRS: Array<{ correct: string; wrong: string }> = [
   { correct: "dobaciti", wrong: "bobaciti" }
 ];
 
+const HIGH_SCORE_REGEX = /High Score:\s*(-?\d+)/i;
+
 function randomLangTask(): LangTask {
   const p = LANG_PAIRS[Math.floor(Math.random() * LANG_PAIRS.length)];
   // Randomize order at presentation time; store correct + wrong
   return { kind: "lang", correct: p.correct, wrong: p.wrong };
+}
+
+function getGitHubIssueConfig() {
+  const issueNumber = import.meta.env.VITE_GITHUB_ISSUE;
+  const token = import.meta.env.VITE_GITHUB_TOKEN;
+  const repo = import.meta.env.VITE_GITHUB_REPO;
+  const owner = import.meta.env.VITE_GITHUB_OWNER;
+
+  if (!issueNumber || !token) return null;
+  if (repo) {
+    const [repoOwner, repoName] = repo.split("/");
+    if (repoOwner && repoName) {
+      return { owner: repoOwner, repo: repoName, issueNumber, token };
+    }
+  }
+  if (owner && import.meta.env.VITE_GITHUB_REPO) {
+    return { owner, repo: import.meta.env.VITE_GITHUB_REPO, issueNumber, token };
+  }
+  return null;
+}
+
+async function updateGitHubHighScore(score: number) {
+  const config = getGitHubIssueConfig();
+  if (!config) return;
+
+  const issueUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/issues/${config.issueNumber}`;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${config.token}`
+  };
+
+  const response = await fetch(issueUrl, { headers });
+  if (!response.ok) {
+    console.warn("Ne mogu dohvatiti GitHub issue.", response.status);
+    return;
+  }
+
+  const issue = await response.json();
+  const body = typeof issue.body === "string" ? issue.body : "";
+  const match = body.match(HIGH_SCORE_REGEX);
+  const current = match ? Number(match[1]) : null;
+
+  if (current !== null && score <= current) return;
+
+  const newLine = `High Score: ${score}`;
+  const nextBody = match ? body.replace(HIGH_SCORE_REGEX, newLine) : `${body}\n\n${newLine}`.trim();
+
+  const updateResponse = await fetch(issueUrl, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ body: nextBody })
+  });
+
+  if (!updateResponse.ok) {
+    console.warn("Ne mogu ažurirati GitHub issue.", updateResponse.status);
+  }
 }
 
 function useNoScroll() {
@@ -250,6 +311,7 @@ export default function App() {
 
   const wolfTargetRef = useRef<Vec2>({ x: 10 * TILE, y: 6 * TILE });
   const wolfModeRef = useRef<"wander" | "chase">("wander");
+  const highScoreReportedRef = useRef(false);
 
   // Lakes and paths are rectangles for quick collision + rendering
   const lakes = useMemo(() => {
@@ -435,6 +497,23 @@ export default function App() {
       }
     }
   }, [doors, gameOver, lakes, player, task, wolf]);
+
+  useEffect(() => {
+    if (gameOver) return;
+    if (doors.every((d) => d.open)) {
+      setGameOver("Bravo! Sva vrata su otvorena.");
+    }
+  }, [doors, gameOver]);
+
+  useEffect(() => {
+    if (!gameOver) {
+      highScoreReportedRef.current = false;
+      return;
+    }
+    if (highScoreReportedRef.current) return;
+    highScoreReportedRef.current = true;
+    void updateGitHubHighScore(score);
+  }, [gameOver, score]);
 
   // Render helpers
   const boardStyle: React.CSSProperties = {
