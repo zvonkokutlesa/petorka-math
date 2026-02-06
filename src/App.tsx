@@ -71,19 +71,38 @@ function randomMathTask(): MathTask {
 
 const LANG_PAIRS: Array<{ correct: string; wrong: string }> = [
   { correct: "baba", wrong: "dada" },
-  { correct: "doba", wrong: "boda" },
-  { correct: "dobar", wrong: "bob ar".replace(" ", "") }, // silly, but valid string
+  { correct: "dobar", wrong: "bodar" },  
   { correct: "brdo", wrong: "drbo" },
   { correct: "bod", wrong: "dod" },
-  { correct: "dud", wrong: "bud" },
+  { correct: "duda", wrong: "buda" },
   { correct: "bubanj", wrong: "dudanj" },
   { correct: "dabar", wrong: "babar" },
   { correct: "brod", wrong: "drod" },
   { correct: "džep", wrong: "bžep" },
-  { correct: "badem", wrong: "dadem" },
+  { correct: "badem", wrong: "dabem" },
   { correct: "dobit", wrong: "bobit" },
   { correct: "budi", wrong: "dubi" },
-  { correct: "djed", wrong: "bjed" }
+  { correct: "djed", wrong: "bjed" },
+  { correct: "barka", wrong: "darka" },
+  { correct: "daska", wrong: "baska" },
+  { correct: "bedak", wrong: "dedak" },
+  { correct: "dobar", wrong: "dobad" },
+  { correct: "bidon", wrong: "didon" },
+  { correct: "dubok", wrong: "bubok" },
+  { correct: "biser", wrong: "diser" },
+  { correct: "dolina", wrong: "bolina" },
+  { correct: "brada", wrong: "draba" },
+  { correct: "bedem", wrong: "dedem" },
+  { correct: "budala", wrong: "dudala" },
+  { correct: "dobro", wrong: "bobro" },
+  { correct: "bodež", wrong: "dodež" },
+  { correct: "dabar", wrong: "dadar" },
+  { correct: "buket", wrong: "duket" },
+  { correct: "dobitak", wrong: "bobitak" },
+  { correct: "bubreg", wrong: "dubreg" },
+  { correct: "dnevnik", wrong: "bnevnik" },
+  { correct: "barjak", wrong: "darjak" },
+  { correct: "dobaciti", wrong: "bobaciti" }
 ];
 
 function randomLangTask(): LangTask {
