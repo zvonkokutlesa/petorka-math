@@ -17,6 +17,12 @@ Netlify build command:
 Publish directory:
 - `dist`
 
+## GitHub Pages
+
+1. Ensure the repository Settings → Pages is set to **GitHub Actions**.
+2. Push to `main` to trigger the workflow; it builds and deploys `dist` automatically.
+3. The app will be served from `https://<username>.github.io/petorka-math/`.
+
 ## Pravila igre
 
 - 10 vrata: 5 matematika, 5 jezik (b/d)
