@@ -20,7 +20,7 @@ const WOLF_R = 16;
 
 const PLAYER_SPEED = 160; // px/s
 const WOLF_WANDER_SPEED = 120;
-const WOLF_CHASE_SPEED = 120; // same speed, only direction changes
+const WOLF_CHASE_SPEED = 80; // same speed, only direction changes
 const WOLF_CHASE_RADIUS = 180;
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
