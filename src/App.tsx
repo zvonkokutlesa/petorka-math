@@ -8,6 +8,7 @@ type Vec2 = { x: number; y: number };
 type MathTask = { kind: "math"; a: number; b: number; op: "+" | "-"; answer: number };
 type LangTask = { kind: "lang"; correct: string; wrong: string };
 type Task = MathTask | LangTask;
+type GameOverState = { message: string; outcome: "defeat" | "victory" };
 
 const TILE = 40;
 const MAP_W = 20;
@@ -135,7 +136,7 @@ function useNoScroll() {
   }, []);
 }
 
-function updateFavicon(state: { player: Vec2; wolf: Vec2; task: Task | null; gameOver: string | null }) {
+function updateFavicon(state: { player: Vec2; wolf: Vec2; task: Task | null; gameOver: GameOverState | null }) {
   const size = 32;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -294,7 +295,7 @@ export default function App() {
   const [player, setPlayer] = useState<Vec2>(startPos);
   const [wolf, setWolf] = useState<Vec2>({ x: 15 * TILE + TILE / 2, y: 6 * TILE + TILE / 2 });
 
-  const [gameOver, setGameOver] = useState<null | string>(null);
+  const [gameOver, setGameOver] = useState<GameOverState | null>(null);
   const [taskDoorId, setTaskDoorId] = useState<number | null>(null);
   const [task, setTask] = useState<Task | null>(null);
 
@@ -387,11 +388,157 @@ export default function App() {
   };
 
   const markDoorOpen = (doorId: number) => {
-    setDoors((prev) => prev.map((d) => (d.id === doorId ? { ...d, open: true } : d)));
+    setDoors((prev) => {
+      const next = prev.map((d) => (d.id === doorId ? { ...d, open: true } : d));
+      const allOpen = next.every((d) => d.open);
+      if (allOpen) {
+        setGameOver({ message: "Bravo! Sva vrata su otvorena.", outcome: "victory" });
+      }
+      return next;
+    });
   };
 
-  const failTask = () => setScore((s) => s - 10);
-  const winTask = () => setScore((s) => s + 10);
+  const playSuccessSound = () => {
+    const ctx = ensureAudioContext();
+    void ctx.resume();
+    playToneSequence(ctx, [
+      { freq: 523.25, duration: 0.12 },
+      { freq: 659.25, duration: 0.12 },
+      { freq: 783.99, duration: 0.18 }
+    ]);
+  };
+
+  const playFailSound = () => {
+    const ctx = ensureAudioContext();
+    void ctx.resume();
+    playToneSequence(ctx, [
+      { freq: 220, duration: 0.15 },
+      { freq: 196, duration: 0.18 },
+      { freq: 164.81, duration: 0.2 }
+    ], { type: "sawtooth", gain: 0.06 });
+  };
+
+  const playVictorySound = () => {
+    const ctx = ensureAudioContext();
+    void ctx.resume();
+    playToneSequence(ctx, [
+      { freq: 392, duration: 0.15 },
+      { freq: 523.25, duration: 0.15 },
+      { freq: 659.25, duration: 0.2 },
+      { freq: 784, duration: 0.3 }
+    ], { type: "triangle", gain: 0.08 });
+  };
+
+  const playDefeatSound = () => {
+    const ctx = ensureAudioContext();
+    void ctx.resume();
+    playToneSequence(ctx, [
+      { freq: 220, duration: 0.2 },
+      { freq: 196, duration: 0.2 },
+      { freq: 174.61, duration: 0.25 },
+      { freq: 146.83, duration: 0.3 }
+    ], { type: "square", gain: 0.08 });
+  };
+
+  const failTask = () => {
+    setScore((s) => s - 10);
+    playFailSound();
+  };
+
+  const winTask = () => {
+    setScore((s) => s + 10);
+    playSuccessSound();
+  };
+
+  const audioStateRef = useRef<{
+    ctx: AudioContext | null;
+    musicOsc: OscillatorNode | null;
+    musicGain: GainNode | null;
+    musicInterval: number | null;
+  }>({ ctx: null, musicOsc: null, musicGain: null, musicInterval: null });
+
+  const ensureAudioContext = () => {
+    if (!audioStateRef.current.ctx) {
+      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error("AudioContext is not supported in this browser.");
+      }
+      audioStateRef.current.ctx = new AudioContextCtor();
+    }
+    return audioStateRef.current.ctx;
+  };
+
+  const startBackgroundMusic = () => {
+    const ctx = ensureAudioContext();
+    if (audioStateRef.current.musicOsc) return;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.03;
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = 220;
+    osc.connect(gain);
+    osc.start();
+    audioStateRef.current.musicOsc = osc;
+    audioStateRef.current.musicGain = gain;
+
+    const notes = [220, 247, 262, 294, 330, 294, 262, 247];
+    let idx = 0;
+    audioStateRef.current.musicInterval = window.setInterval(() => {
+      osc.frequency.setTargetAtTime(notes[idx % notes.length], ctx.currentTime, 0.08);
+      idx += 1;
+    }, 600);
+  };
+
+  const stopBackgroundMusic = () => {
+    const { musicOsc, musicGain, musicInterval } = audioStateRef.current;
+    if (musicInterval) window.clearInterval(musicInterval);
+    if (musicOsc) {
+      musicOsc.stop();
+      musicOsc.disconnect();
+    }
+    if (musicGain) musicGain.disconnect();
+    audioStateRef.current.musicOsc = null;
+    audioStateRef.current.musicGain = null;
+    audioStateRef.current.musicInterval = null;
+  };
+
+  const playToneSequence = (
+    ctx: AudioContext,
+    notes: Array<{ freq: number; duration: number }>,
+    options: { type?: OscillatorType; gain?: number } = {}
+  ) => {
+    const gain = ctx.createGain();
+    gain.gain.value = options.gain ?? 0.07;
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = options.type ?? "sine";
+    osc.connect(gain);
+    let t = ctx.currentTime;
+    for (const note of notes) {
+      osc.frequency.setValueAtTime(note.freq, t);
+      gain.gain.setValueAtTime(options.gain ?? 0.07, t);
+      t += note.duration;
+    }
+    gain.gain.exponentialRampToValueAtTime(0.0001, t);
+    osc.start();
+    osc.stop(t + 0.05);
+  };
+
+  useEffect(() => {
+    const handleStart = () => {
+      const ctx = ensureAudioContext();
+      void ctx.resume();
+      startBackgroundMusic();
+    };
+    window.addEventListener("pointerdown", handleStart, { once: true });
+    window.addEventListener("keydown", handleStart, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", handleStart);
+      window.removeEventListener("keydown", handleStart);
+      stopBackgroundMusic();
+    };
+  }, []);
 
   // Game loop
   useEffect(() => {
@@ -465,6 +612,15 @@ export default function App() {
     updateFavicon({ player, wolf, task, gameOver });
   }, [player, wolf, task, gameOver]);
 
+  useEffect(() => {
+    if (!gameOver) return;
+    if (gameOver.outcome === "victory") {
+      playVictorySound();
+    } else {
+      playDefeatSound();
+    }
+  }, [gameOver]);
+
   // Collisions: lake -> game over; wolf contact -> game over; doors -> task
   useEffect(() => {
     if (gameOver) return;
@@ -472,14 +628,14 @@ export default function App() {
     // Lake
     for (const l of lakes) {
       if (rectContainsCircle(l.x, l.y, l.w, l.h, player.x, player.y, PLAYER_R)) {
-        setGameOver("Upao si u jezero. Pljus!");
+        setGameOver({ message: "Upao si u jezero. Pljus!", outcome: "defeat" });
         return;
       }
     }
 
     // Wolf contact
     if (dist(player, wolf) < PLAYER_R + WOLF_R - 4) {
-      setGameOver("Vuk te pojeo! (Nom nom)");
+      setGameOver({ message: "Vuk te pojeo! (Nom nom)", outcome: "defeat" });
       return;
     }
 
@@ -613,7 +769,7 @@ export default function App() {
       title="Game Over"
       actions={<button className="btn" onClick={resetGame}>Restart</button>}
     >
-      <div className="task-q">{gameOver}</div>
+      <div className="task-q">{gameOver.message}</div>
       <div className="task-hint">
         Restart vraća lika na početak, zatvara sva vrata i resetira score. Kao da se ništa nije dogodilo. Osim psihičke štete.
       </div>
