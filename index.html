@@ -7,6 +7,22 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
+    <script type="module" id="app" src="/src/main.tsx"></script>
+    <script>
+      const appScript = document.getElementById("app");
+      if (appScript) {
+        appScript.addEventListener("error", () => {
+          const styles = document.createElement("link");
+          styles.rel = "stylesheet";
+          styles.href = "./assets/index.css";
+          document.head.appendChild(styles);
+
+          const fallback = document.createElement("script");
+          fallback.type = "module";
+          fallback.src = "./assets/main.js";
+          document.body.appendChild(fallback);
+        });
+      }
+    </script>
   </body>
 </html>
