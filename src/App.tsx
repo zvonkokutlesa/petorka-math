@@ -25,6 +25,7 @@ const WOLF_CHASE_RADIUS = 150;
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const dist = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.y - b.y);
+const clampTo = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 function rectContainsCircle(rx: number, ry: number, rw: number, rh: number, cx: number, cy: number, cr: number) {
   const closestX = clamp(cx, rx, rx + rw);
@@ -132,6 +133,59 @@ function useNoScroll() {
       window.removeEventListener("keydown", keyPrevent as any);
     };
   }, []);
+}
+
+function updateFavicon(state: { player: Vec2; wolf: Vec2; task: Task | null; gameOver: string | null }) {
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.fillStyle = state.gameOver ? "#3d1212" : "#1e5a33";
+  ctx.fillRect(0, 0, size, size);
+
+  if (state.task) {
+    ctx.strokeStyle = "#f5d142";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, size - 4, size - 4);
+  }
+
+  const pad = 4;
+  const mapX = (x: number) => clampTo((x / BOARD_W) * (size - pad * 2) + pad, pad, size - pad);
+  const mapY = (y: number) => clampTo((y / BOARD_H) * (size - pad * 2) + pad, pad, size - pad);
+
+  ctx.fillStyle = "#59d7ff";
+  ctx.beginPath();
+  ctx.arc(mapX(state.player.x), mapY(state.player.y), 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#f06b64";
+  ctx.beginPath();
+  ctx.arc(mapX(state.wolf.x), mapY(state.wolf.y), 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (state.gameOver) {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(6, 6);
+    ctx.lineTo(size - 6, size - 6);
+    ctx.moveTo(size - 6, 6);
+    ctx.lineTo(6, size - 6);
+    ctx.stroke();
+  }
+
+  const linkId = "favicon";
+  let link = document.querySelector<HTMLLinkElement>(`link#${linkId}[rel="icon"]`);
+  if (!link) {
+    link = document.createElement("link");
+    link.id = linkId;
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = canvas.toDataURL("image/png");
 }
 
 function computeScale(containerW: number, containerH: number) {
@@ -406,6 +460,10 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.x, player.y, wolf.x, wolf.y, gameOver, task]);
+
+  useEffect(() => {
+    updateFavicon({ player, wolf, task, gameOver });
+  }, [player, wolf, task, gameOver]);
 
   // Collisions: lake -> game over; wolf contact -> game over; doors -> task
   useEffect(() => {
