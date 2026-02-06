@@ -137,7 +137,7 @@ function useNoScroll() {
 function computeScale(containerW: number, containerH: number) {
   const sx = containerW / BOARD_W;
   const sy = containerH / BOARD_H;
-  return Math.min(1, sx, sy);
+  return Math.max(sx, sy);
 }
 
 function DPad(props: {
