@@ -40,8 +40,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(to bottom, rgba(15,18,34,0.5), rgba(15,18,34,0.25));
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
 }
 
 .title { font-weight: 800; letter-spacing: 0.3px; }
@@ -312,12 +313,13 @@ body {
   height: min(22vw, 74px);
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.12);
   color: rgba(255,255,255,0.92);
   font-size: 22px;
   font-weight: 900;
   box-shadow: 0 10px 26px rgba(0,0,0,0.25);
   touch-action: none;
+  backdrop-filter: blur(6px);
 }
 .dpad-btn:active { transform: translateY(1px) scale(0.99); background: rgba(255,255,255,0.14); }
 .dpad-btn.up { grid-column: 2; grid-row: 1; }
