@@ -289,6 +289,7 @@ export default function App() {
   const [scale, setScale] = useState(1);
 
   const [score, setScore] = useState(0);
+  const [musicEnabled, setMusicEnabled] = useState(true);
   const [doors, setDoors] = useState<Door[]>(() => makeInitialDoors());
 
   const startPos = useMemo<Vec2>(() => ({ x: 2 * TILE + TILE / 2, y: 2 * TILE + TILE / 2 }), []);
@@ -452,10 +453,21 @@ export default function App() {
 
   const audioStateRef = useRef<{
     ctx: AudioContext | null;
-    musicOsc: OscillatorNode | null;
+    musicOscA: OscillatorNode | null;
+    musicOscB: OscillatorNode | null;
+    musicLfo: OscillatorNode | null;
+    musicLfoGain: GainNode | null;
     musicGain: GainNode | null;
     musicInterval: number | null;
-  }>({ ctx: null, musicOsc: null, musicGain: null, musicInterval: null });
+  }>({
+    ctx: null,
+    musicOscA: null,
+    musicOscB: null,
+    musicLfo: null,
+    musicLfoGain: null,
+    musicGain: null,
+    musicInterval: null
+  });
 
   const ensureAudioContext = () => {
     if (!audioStateRef.current.ctx) {
@@ -470,35 +482,70 @@ export default function App() {
 
   const startBackgroundMusic = () => {
     const ctx = ensureAudioContext();
-    if (audioStateRef.current.musicOsc) return;
+    if (audioStateRef.current.musicOscA || audioStateRef.current.musicOscB) return;
+
     const gain = ctx.createGain();
-    gain.gain.value = 0.03;
+    gain.gain.value = 0.02;
     gain.connect(ctx.destination);
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = 220;
-    osc.connect(gain);
-    osc.start();
-    audioStateRef.current.musicOsc = osc;
+
+    const oscA = ctx.createOscillator();
+    oscA.type = "sine";
+    oscA.frequency.value = 220;
+    oscA.connect(gain);
+    oscA.start();
+
+    const oscB = ctx.createOscillator();
+    oscB.type = "triangle";
+    oscB.frequency.value = 330;
+    oscB.connect(gain);
+    oscB.start();
+
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.2;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.006;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+    lfo.start();
+
+    audioStateRef.current.musicOscA = oscA;
+    audioStateRef.current.musicOscB = oscB;
+    audioStateRef.current.musicLfo = lfo;
+    audioStateRef.current.musicLfoGain = lfoGain;
     audioStateRef.current.musicGain = gain;
 
     const notes = [220, 247, 262, 294, 330, 294, 262, 247];
     let idx = 0;
     audioStateRef.current.musicInterval = window.setInterval(() => {
-      osc.frequency.setTargetAtTime(notes[idx % notes.length], ctx.currentTime, 0.08);
+      const n = notes[idx % notes.length];
+      oscA.frequency.setTargetAtTime(n, ctx.currentTime, 0.25);
+      oscB.frequency.setTargetAtTime(n * 1.5, ctx.currentTime, 0.25);
       idx += 1;
-    }, 600);
+    }, 900);
   };
 
   const stopBackgroundMusic = () => {
-    const { musicOsc, musicGain, musicInterval } = audioStateRef.current;
+    const { musicOscA, musicOscB, musicLfo, musicLfoGain, musicGain, musicInterval } = audioStateRef.current;
     if (musicInterval) window.clearInterval(musicInterval);
-    if (musicOsc) {
-      musicOsc.stop();
-      musicOsc.disconnect();
+    if (musicOscA) {
+      musicOscA.stop();
+      musicOscA.disconnect();
     }
+    if (musicOscB) {
+      musicOscB.stop();
+      musicOscB.disconnect();
+    }
+    if (musicLfo) {
+      musicLfo.stop();
+      musicLfo.disconnect();
+    }
+    if (musicLfoGain) musicLfoGain.disconnect();
     if (musicGain) musicGain.disconnect();
-    audioStateRef.current.musicOsc = null;
+    audioStateRef.current.musicOscA = null;
+    audioStateRef.current.musicOscB = null;
+    audioStateRef.current.musicLfo = null;
+    audioStateRef.current.musicLfoGain = null;
     audioStateRef.current.musicGain = null;
     audioStateRef.current.musicInterval = null;
   };
@@ -526,6 +573,11 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!musicEnabled) {
+      stopBackgroundMusic();
+      return;
+    }
+
     const handleStart = () => {
       const ctx = ensureAudioContext();
       void ctx.resume();
@@ -538,7 +590,7 @@ export default function App() {
       window.removeEventListener("keydown", handleStart);
       stopBackgroundMusic();
     };
-  }, []);
+  }, [musicEnabled]);
 
   // Game loop
   useEffect(() => {
@@ -780,7 +832,17 @@ export default function App() {
     <div className="app">
       <header className="hud">
         <div className="title">Petorka Math</div>
-        <div className="score">Score: <b>{score}</b></div>
+        <div className="hudRight">
+          <button
+            className="musicToggle"
+            onClick={() => setMusicEnabled((v) => !v)}
+            aria-pressed={musicEnabled}
+            title="Uključi ili isključi pozadinsku muziku"
+          >
+            {musicEnabled ? "Music: On" : "Music: Off"}
+          </button>
+          <div className="score">Score: <b>{score}</b></div>
+        </div>
       </header>
 
       <div className="game">
