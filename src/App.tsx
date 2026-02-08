@@ -335,14 +335,25 @@ export default function App() {
     const onResize = () => {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      setBoardScale(Math.min(rect.width / BOARD_W, rect.height / BOARD_H));
+      const nextScale = Math.min(1, rect.width / BOARD_W, rect.height / BOARD_H);
+      setBoardScale(nextScale > 0 ? nextScale : 1);
     };
     onResize();
 
-    const ro = new ResizeObserver(onResize);
-    ro.observe(el);
+    window.addEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
 
-    return () => ro.disconnect();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(onResize);
+      ro.observe(el);
+    }
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
   }, []);
 
   // Keyboard movement (desktop)
@@ -698,11 +709,16 @@ export default function App() {
   }, [doors, gameOver, lakes, player, task, wolf]);
 
   // Render helpers
+  const boardFrameStyle: React.CSSProperties = {
+    width: BOARD_W * boardScale,
+    height: BOARD_H * boardScale
+  };
+
   const boardStyle: React.CSSProperties = {
     width: BOARD_W,
     height: BOARD_H,
     transform: `scale(${boardScale})`,
-    transformOrigin: "center center"
+    transformOrigin: "top left"
   };
 
   const steveStyle: React.CSSProperties = {
@@ -842,29 +858,31 @@ export default function App() {
 
       <div className="game">
         <div className="boardWrap" ref={boardWrapRef}>
-          <div className="board" style={boardStyle}>
-            <div className="grass" />
+          <div className="boardFrame" style={boardFrameStyle}>
+            <div className="board" style={boardStyle}>
+              <div className="grass" />
 
-            {paths.map((p, idx) => (
-              <div key={idx} className="path" style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
-            ))}
+              {paths.map((p, idx) => (
+                <div key={idx} className="path" style={{ left: p.x, top: p.y, width: p.w, height: p.h }} />
+              ))}
 
-            {lakes.map((l, idx) => (
-              <div key={idx} className="lake" style={{ left: l.x, top: l.y, width: l.w, height: l.h }} />
-            ))}
+              {lakes.map((l, idx) => (
+                <div key={idx} className="lake" style={{ left: l.x, top: l.y, width: l.w, height: l.h }} />
+              ))}
 
-            {trees.map((t, idx) => (
-              <div key={idx} className="tree" style={{ left: t.x, top: t.y }} />
-            ))}
+              {trees.map((t, idx) => (
+                <div key={idx} className="tree" style={{ left: t.x, top: t.y }} />
+              ))}
 
-            {doorElements}
+              {doorElements}
 
-            <div className="entity steveEntity" style={steveStyle}>
-              <MinecraftSteve />
-            </div>
+              <div className="entity steveEntity" style={steveStyle}>
+                <MinecraftSteve />
+              </div>
 
-            <div className={`entity wolfEntity ${wolfModeRef.current}`} style={wolfStyle}>
-              <Wolf />
+              <div className={`entity wolfEntity ${wolfModeRef.current}`} style={wolfStyle}>
+                <Wolf />
+              </div>
             </div>
           </div>
         </div>
