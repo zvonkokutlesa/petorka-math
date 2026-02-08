@@ -280,7 +280,7 @@ export default function App() {
   useNoScroll();
 
   const boardWrapRef = useRef<HTMLDivElement | null>(null);
-  const [boardScale, setBoardScale] = useState<Vec2>({ x: 1, y: 1 });
+  const [boardScale, setBoardScale] = useState(1);
 
   const [score, setScore] = useState(0);
   const [musicEnabled, setMusicEnabled] = useState(true);
@@ -335,10 +335,7 @@ export default function App() {
     const onResize = () => {
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      setBoardScale({
-        x: rect.width / BOARD_W,
-        y: rect.height / BOARD_H
-      });
+      setBoardScale(Math.min(rect.width / BOARD_W, rect.height / BOARD_H));
     };
     onResize();
 
@@ -704,8 +701,8 @@ export default function App() {
   const boardStyle: React.CSSProperties = {
     width: BOARD_W,
     height: BOARD_H,
-    transform: `scale(${boardScale.x}, ${boardScale.y})`,
-    transformOrigin: "top left"
+    transform: `scale(${boardScale})`,
+    transformOrigin: "center center"
   };
 
   const steveStyle: React.CSSProperties = {
