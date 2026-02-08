@@ -189,12 +189,6 @@ function updateFavicon(state: { player: Vec2; wolf: Vec2; task: Task | null; gam
   link.href = canvas.toDataURL("image/png");
 }
 
-function computeScale(containerW: number, containerH: number) {
-  const sx = containerW / BOARD_W;
-  const sy = containerH / BOARD_H;
-  return Math.max(sx, sy);
-}
-
 function DPad(props: {
   onDirDown: (dir: "up" | "down" | "left" | "right") => void;
   onDirUp: () => void;
@@ -286,7 +280,7 @@ export default function App() {
   useNoScroll();
 
   const boardWrapRef = useRef<HTMLDivElement | null>(null);
-  const [scale, setScale] = useState(1);
+  const [boardScale, setBoardScale] = useState<Vec2>({ x: 1, y: 1 });
 
   const [score, setScore] = useState(0);
   const [musicEnabled, setMusicEnabled] = useState(true);
@@ -340,7 +334,11 @@ export default function App() {
 
     const onResize = () => {
       const rect = el.getBoundingClientRect();
-      setScale(computeScale(rect.width, rect.height));
+      if (rect.width <= 0 || rect.height <= 0) return;
+      setBoardScale({
+        x: rect.width / BOARD_W,
+        y: rect.height / BOARD_H
+      });
     };
     onResize();
 
@@ -706,7 +704,7 @@ export default function App() {
   const boardStyle: React.CSSProperties = {
     width: BOARD_W,
     height: BOARD_H,
-    transform: `scale(${scale})`,
+    transform: `scale(${boardScale.x}, ${boardScale.y})`,
     transformOrigin: "top left"
   };
 

@@ -79,9 +79,6 @@ body {
   inset: 0;
   width: 100vw;
   height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: none;
   border: none;
   border-radius: 0;
@@ -422,9 +419,6 @@ body {
   .boardWrap {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: none;
   border: none;
   border-radius: 0;
