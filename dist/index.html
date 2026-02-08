@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Petorka Math</title>
+    <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231e5a33'/><circle cx='12' cy='16' r='5' fill='%2359d7ff'/><circle cx='22' cy='16' r='5' fill='%23f06b64'/></svg>" />
+    <script type="module" crossorigin src="./assets/main.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const appScript = document.getElementById("app");
+      if (appScript) {
+        appScript.addEventListener("error", () => {
+          const styles = document.createElement("link");
+          styles.rel = "stylesheet";
+          styles.href = "./src/styles.css";
+          document.head.appendChild(styles);
+
+          const fallback = document.createElement("script");
+          fallback.type = "module";
+          fallback.src = "./assets/main.js";
+          document.body.appendChild(fallback);
+        });
+      }
+    </script>
+  </body>
+</html>
