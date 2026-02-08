@@ -36,6 +36,18 @@ function rectContainsCircle(rx: number, ry: number, rw: number, rh: number, cx: 
   return dx * dx + dy * dy <= cr * cr;
 }
 
+function pickWolfWanderTarget(lakes: Array<{ x: number; y: number; w: number; h: number }>) {
+  for (let i = 0; i < 20; i += 1) {
+    const candidate = {
+      x: (1 + Math.random() * (MAP_W - 2)) * TILE,
+      y: (1 + Math.random() * (MAP_H - 2)) * TILE
+    };
+    const inLake = lakes.some((l) => rectContainsCircle(l.x, l.y, l.w, l.h, candidate.x, candidate.y, WOLF_R));
+    if (!inLake) return candidate;
+  }
+  return { x: 2 * TILE, y: 2 * TILE };
+}
+
 function makeInitialDoors(): Door[] {
   // 10 doors: 5 math, 5 lang, scattered around the map
   const placements: Array<Omit<Door, "open">> = [
@@ -639,10 +651,7 @@ export default function App() {
         } else {
           // wander: pick a new target if close
           if (dist(wolf, target) < 20) {
-            wolfTargetRef.current = {
-              x: (1 + Math.random() * (MAP_W - 2)) * TILE,
-              y: (1 + Math.random() * (MAP_H - 2)) * TILE
-            };
+            wolfTargetRef.current = pickWolfWanderTarget(lakes);
             target = wolfTargetRef.current;
           }
         }
@@ -652,10 +661,28 @@ export default function App() {
         const len = Math.hypot(vx, vy) || 1;
         const step = speed * dt;
 
-        const wx = clamp(wolf.x + (vx / len) * step, WOLF_R, BOARD_W - WOLF_R);
-        const wy = clamp(wolf.y + (vy / len) * step, WOLF_R, BOARD_H - WOLF_R);
-
-        setWolf({ x: wx, y: wy });
+        const proposed = {
+          x: clamp(wolf.x + (vx / len) * step, WOLF_R, BOARD_W - WOLF_R),
+          y: clamp(wolf.y + (vy / len) * step, WOLF_R, BOARD_H - WOLF_R)
+        };
+        const hitsLake = lakes.some((l) => rectContainsCircle(l.x, l.y, l.w, l.h, proposed.x, proposed.y, WOLF_R));
+        if (!hitsLake) {
+          setWolf(proposed);
+        } else {
+          const slideX = { x: proposed.x, y: wolf.y };
+          const slideY = { x: wolf.x, y: proposed.y };
+          const hitX = lakes.some((l) => rectContainsCircle(l.x, l.y, l.w, l.h, slideX.x, slideX.y, WOLF_R));
+          const hitY = lakes.some((l) => rectContainsCircle(l.x, l.y, l.w, l.h, slideY.x, slideY.y, WOLF_R));
+          if (!hitX) {
+            setWolf(slideX);
+          } else if (!hitY) {
+            setWolf(slideY);
+          } else {
+            if (!wantsChase) {
+              wolfTargetRef.current = pickWolfWanderTarget(lakes);
+            }
+          }
+        }
       }
 
       raf = requestAnimationFrame(tick);
